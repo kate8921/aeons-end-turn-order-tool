@@ -1,0 +1,526 @@
+<!DOCTYPE html><html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aeon's End Turn Order Tool</title>
+  <style>
+    :root{
+      --bg:#15171c;
+      --panel:#222631;
+      --panel2:#2d3341;
+      --text:#f3f5f7;
+      --muted:#aeb6c2;
+      --accent:#8fd3ff;
+      --danger:#ff8f8f;
+      --good:#a6e3a1;
+      --border:#3b4252;
+      --player:#8fd3ff;
+      --nemesis:#ff9f8f;
+      --wild:#d7b7ff;
+      --special:#f7d774;
+    }*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:radial-gradient(circle at top,#202532 0%,var(--bg) 60%);
+  color:var(--text);
+  min-height:100vh;
+  padding:16px;
+}
+
+.app{max-width:960px;margin:0 auto}
+
+header{text-align:center;margin-bottom:16px}
+h1{font-size:1.5rem;margin:8px 0 4px}
+.subtitle,.note{color:var(--muted)}
+.note{font-size:.86rem;line-height:1.6}
+
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:820px){.grid{grid-template-columns:.95fr 1.05fr}}
+
+.card{
+  background:rgba(34,38,49,.94);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+.wide{grid-column:1/-1}
+.card h2{font-size:1.05rem;margin:0 0 10px}
+
+label{display:flex;align-items:center;gap:8px;margin:8px 0}
+
+select{
+  width:120px;
+  padding:8px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:#151922;
+  color:var(--text);
+  font-size:1rem;
+}
+
+input[type=checkbox]{transform:scale(1.15)}
+
+button{
+  border:0;
+  border-radius:12px;
+  padding:12px 14px;
+  font-size:1rem;
+  font-weight:700;
+  color:#10131a;
+  background:var(--accent);
+  cursor:pointer;
+  margin:4px;
+  min-height:46px;
+}
+
+button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
+button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+button.danger{background:var(--danger)}
+button.good{background:var(--good)}
+
+.controls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}
+.setting-line{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0}
+.small-heading{color:var(--muted);margin:12px 0 4px;font-size:.9rem;font-weight:700}
+
+.current-card{
+  transition:opacity .2s ease,transform .2s ease;
+  min-height:210px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  border-radius:18px;
+  border:2px solid var(--border);
+  background:linear-gradient(145deg,#303747,#1c202a);
+  margin-top:10px;
+  padding:18px;
+}
+
+.fade-in{animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:.2;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
+.current-card.player{border-color:var(--player)}
+.current-card.nemesis{border-color:var(--nemesis)}
+.current-card.wild{border-color:var(--wild)}
+.current-card.special{border-color:var(--special)}
+
+.current-label{color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.current-name{font-size:clamp(2.1rem,8vw,4.7rem);font-weight:900;line-height:1.05}
+.current-type{margin-top:8px;color:var(--muted);font-size:1rem}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:#171b24;border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+.stat strong{display:block;font-size:1.35rem}
+.stat span{color:var(--muted);font-size:.8rem}
+
+.pile{max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.pile-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  align-items:center;
+  padding:8px 10px;
+  border-radius:10px;
+  background:#171b24;
+  border:1px solid var(--border);
+  font-size:.95rem;
+}
+
+.pile-row.player{border-left:5px solid var(--player)}
+.pile-row.nemesis{border-left:5px solid var(--nemesis)}
+.pile-row.wild{border-left:5px solid var(--wild)}
+.pile-row.special{border-left:5px solid var(--special)}
+.tag{font-size:.75rem;color:var(--muted);white-space:nowrap}
+
+#returnMenu{
+  display:none;
+  margin-top:10px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:#171b24;
+}
+
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,.72);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+  padding:16px;
+}
+
+.modal{
+  width:100%;
+  max-width:560px;
+  max-height:86vh;
+  overflow:auto;
+  background:#222631;
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 18px 45px rgba(0,0,0,.55);
+  animation:modalIn .18s ease;
+}
+
+@keyframes modalIn{from{opacity:.2;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
+.reorder-buttons{display:flex;gap:4px;justify-content:flex-end;align-items:center}
+.reorder-buttons button{min-height:34px;padding:6px 10px;font-size:.9rem;margin:0}
+
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Aeon's End Turn Order Tool</h1>
+    <div class="subtitle">ターン順デッキを作成・シャッフル・公開・公開済み確認できるツール</div>
+  </header>  <div class="grid">
+    <section class="card">
+      <h2>設定</h2><div class="setting-line">
+    <span>プレイ人数</span>
+    <select id="playerCount" onchange="onSettingChanged()">
+      <option value="1">ソロ</option>
+      <option value="2" selected>2人</option>
+      <option value="3">3人</option>
+      <option value="4">4人</option>
+    </select>
+  </div>
+
+  <div id="soloSettings" class="setting-line" style="display:none">
+    <span>ソロ時のプレイヤー1カード</span>
+    <select id="soloCards" onchange="onSettingChanged()">
+      <option value="2" selected>2枚</option>
+      <option value="3">3枚</option>
+    </select>
+  </div>
+
+  <div class="small-heading">ネメシスターン順カード</div>
+  <p class="note">特殊ネメシスは通常のネメシス1枚目と置き換え、急襲ネメシスは通常のネメシス2枚目と置き換えます。</p>
+  <label><input id="specialNemesis" type="checkbox" onchange="onSettingChanged()"> 特殊ネメシス</label>
+  <label><input id="assaultNemesis" type="checkbox" onchange="onSettingChanged()"> 急襲ネメシス</label>
+
+  <div class="controls">
+    <button type="button" class="secondary" onclick="saveSettings(true)">設定保存</button>
+    <button type="button" class="danger" onclick="resetAll()">リセット</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>現在の公開カード</h2>
+  <div class="current-card special" id="currentCard">
+    <div class="current-label">まだ公開されていません</div>
+    <div class="current-name">準備OK</div>
+    <div class="current-type">新ラウンド開始を押してください</div>
+  </div>
+
+  <div class="controls">
+    <button type="button" id="mainActionBtn" class="good" onclick="mainAction()">新ラウンド開始</button>
+    <button type="button" id="undoBtn" class="secondary" onclick="undoDraw()">1枚戻す</button>
+    <button type="button" id="returnBtn" class="secondary" onclick="openReturnMenu()">カードを山札に戻す</button>
+    <button type="button" id="shuffleBtn" class="secondary" onclick="shuffleRemaining()">残りをシャッフル</button>
+    <button type="button" id="reorderBtn" class="secondary" onclick="openReorderMenu()">山札を並び替える</button>
+  </div>
+
+  <div id="returnMenu">
+    <div class="small-heading">戻すカードを選択</div>
+    <select id="returnSelect" style="width:100%"></select>
+    <div class="small-heading">戻し方</div>
+    <select id="returnMode" style="width:100%">
+      <option value="top">山札の上に戻す</option>
+      <option value="bottom" selected>山札の下に戻す</option>
+      <option value="shuffle">山札に戻してシャッフル</option>
+    </select>
+    <div class="controls">
+      <button type="button" onclick="confirmReturn()">実行</button>
+      <button type="button" class="secondary" onclick="closeReturnMenu()">キャンセル</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><strong id="deckCount">0</strong><span>山札</span></div>
+    <div class="stat"><strong id="discardCount">0</strong><span>公開済み</span></div>
+    <div class="stat"><strong id="roundCount">0</strong><span>ラウンド</span></div>
+  </div>
+</section>
+
+<section class="card wide">
+  <h2>公開中・公開済み確認</h2>
+  <p class="note">上が新しく公開されたカードです。</p>
+  <div id="discardList" class="pile"></div>
+</section>
+
+  </div>
+</div><div id="reorderModal" class="modal-overlay">
+  <div class="modal">
+    <h2>山札並び替え</h2>
+    <p class="note">上にあるカードほど先に公開されます。ザクソス等で山札を任意順に並べる時だけ使います。</p>
+    <div id="reorderList" class="pile"></div>
+    <div class="controls">
+      <button type="button" onclick="confirmReorder()">この順で確定</button>
+      <button type="button" class="secondary" onclick="cancelReorder()">キャンセル</button>
+    </div>
+  </div>
+</div><script>
+let deck=[];
+let discard=[];
+let round=0;
+let reorderBackup=null;
+const STORAGE_KEY="aeonsEndTurnOrderToolFullStable1";
+
+function $(id){return document.getElementById(id);}
+function makeCard(name,type){return{name:name,type:type,className:typeClass(type),id:Date.now()+"-"+Math.random()};}
+function typeClass(type){if(type==="プレイヤー")return"player";if(type==="ネメシス")return"nemesis";if(type==="任意")return"wild";return"special";}
+function escapeHtml(value){return String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function shuffle(cards){const a=cards.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+function buildDeck(){
+  const cards=[];
+  const playerCount=Number($("playerCount").value);
+  const soloCards=Number($("soloCards").value);
+
+  if(playerCount===1){
+    for(let i=0;i<soloCards;i++)cards.push(makeCard("プレイヤー1","プレイヤー"));
+  }else if(playerCount===2){
+    cards.push(makeCard("プレイヤー1","プレイヤー"));
+    cards.push(makeCard("プレイヤー1","プレイヤー"));
+    cards.push(makeCard("プレイヤー2","プレイヤー"));
+    cards.push(makeCard("プレイヤー2","プレイヤー"));
+  }else if(playerCount===3){
+    cards.push(makeCard("プレイヤー1","プレイヤー"));
+    cards.push(makeCard("プレイヤー2","プレイヤー"));
+    cards.push(makeCard("プレイヤー3","プレイヤー"));
+    cards.push(makeCard("プレイヤー任意","任意"));
+  }else{
+    cards.push(makeCard("プレイヤー1","プレイヤー"));
+    cards.push(makeCard("プレイヤー2","プレイヤー"));
+    cards.push(makeCard("プレイヤー3","プレイヤー"));
+    cards.push(makeCard("プレイヤー4","プレイヤー"));
+  }
+
+  cards.push(makeCard($("specialNemesis").checked?"特殊ネメシス":"ネメシス","ネメシス"));
+  cards.push(makeCard($("assaultNemesis").checked?"急襲ネメシス":"ネメシス","ネメシス"));
+  return cards;
+}
+
+function setCurrent(label,name,type,className){
+  const el=$("currentCard");
+  el.className="current-card "+(className||"special");
+  el.classList.remove("fade-in");
+  void el.offsetWidth;
+  el.innerHTML='<div class="current-label">'+escapeHtml(label)+'</div><div class="current-name">'+escapeHtml(name)+'</div><div class="current-type">'+escapeHtml(type)+'</div>';
+  el.classList.add("fade-in");
+}
+
+function updateDiscardList(){
+  if(discard.length===0){
+    $("discardList").innerHTML='<div class="note">まだ公開されていません</div>';
+    return;
+  }
+  $("discardList").innerHTML=discard.map(function(c,i){
+    const label=i===0?"現在":"公開済み "+(i+1);
+    return '<div class="pile-row '+c.className+'"><span><strong>'+escapeHtml(label)+'</strong>：'+escapeHtml(c.name)+'</span><span class="tag">'+escapeHtml(c.type)+'</span></div>';
+  }).join("");
+}
+
+function updateMainActionButton(){
+  const btn=$("mainActionBtn");
+  if(round===0){
+    btn.textContent="新ラウンド開始";
+    btn.className="good";
+  }else if(deck.length===0){
+    btn.textContent="次ラウンド開始";
+    btn.className="good";
+  }else{
+    btn.textContent="1枚公開";
+    btn.className="";
+  }
+}
+
+function updateView(){
+  $("deckCount").textContent=deck.length;
+  $("discardCount").textContent=discard.length;
+  $("roundCount").textContent=round;
+  updateMainActionButton();
+  updateDiscardList();
+}
+
+function updateSoloVisibility(){
+  $("soloSettings").style.display=Number($("playerCount").value)===1?"flex":"none";
+}
+
+function mainAction(){
+  if(round===0||deck.length===0)newRound();
+  else drawCard();
+}
+
+function newRound(){
+  if(round>0&&deck.length>0)return;
+  if(round>0&&deck.length===0){
+    if(!confirm("次のラウンドを開始しますか？"))return;
+  }
+  deck=shuffle(buildDeck());
+  discard=[];
+  round++;
+  closeReturnMenu();
+  closeReorderModal(false);
+  setCurrent("ラウンド開始","第"+round+"ラウンド","山札をシャッフルしました","special");
+  saveSettings(false);
+  updateView();
+}
+
+function drawCard(){
+  if(deck.length===0){
+    setCurrent("山札切れ","ラウンド終了","次ラウンド開始を押してください","special");
+    updateView();
+    return;
+  }
+  const drawn=deck.shift();
+  discard.unshift(drawn);
+  setCurrent("公開カード",drawn.name,drawn.type,drawn.className);
+  updateView();
+}
+
+function undoDraw(){
+  if(discard.length===0)return;
+  const restored=discard.shift();
+  deck.unshift(restored);
+  setCurrent("取り消し",restored.name,"山札の上に戻しました",restored.className);
+  updateView();
+}
+
+function openReturnMenu(){
+  if(discard.length===0)return;
+  $("returnSelect").innerHTML=discard.map(function(c,i){
+    return '<option value="'+i+'">'+escapeHtml(c.name)+'（'+escapeHtml(c.type)+'）</option>';
+  }).join("");
+  $("returnMenu").style.display="block";
+}
+
+function closeReturnMenu(){
+  $("returnMenu").style.display="none";
+}
+
+function confirmReturn(){
+  const index=Number($("returnSelect").value);
+  const mode=$("returnMode").value;
+  if(!discard[index])return;
+  const returned=discard.splice(index,1)[0];
+
+  if(mode==="top")deck.unshift(returned);
+  else if(mode==="bottom")deck.push(returned);
+  else{deck.push(returned);deck=shuffle(deck);}
+
+  const text=mode==="top"?"山札の上に戻しました":mode==="bottom"?"山札の下に戻しました":"山札に戻してシャッフルしました";
+  setCurrent("山札に戻す",returned.name,text,returned.className);
+  closeReturnMenu();
+  updateView();
+}
+
+function shuffleRemaining(){
+  deck=shuffle(deck);
+  setCurrent("シャッフル","残り山札","残りカードだけをシャッフルしました","special");
+  updateView();
+}
+
+function resetAll(){
+  deck=[];
+  discard=[];
+  round=0;
+  reorderBackup=null;
+  closeReturnMenu();
+  closeReorderModal(false);
+  setCurrent("リセット","準備OK","新ラウンド開始を押してください","special");
+  updateView();
+}
+
+function openReorderMenu(){
+  if(deck.length===0)return;
+  closeReturnMenu();
+  reorderBackup=deck.slice();
+  $("reorderModal").style.display="flex";
+  document.body.style.overflow="hidden";
+  renderReorderList();
+}
+
+function closeReorderModal(restore){
+  if(restore&&reorderBackup)deck=reorderBackup.slice();
+  reorderBackup=null;
+  $("reorderModal").style.display="none";
+  document.body.style.overflow="";
+}
+
+function cancelReorder(){
+  closeReorderModal(true);
+  updateView();
+}
+
+function confirmReorder(){
+  closeReorderModal(false);
+  setCurrent("山札並び替え","順番確定","残り山札を指定順に並べました","special");
+  updateView();
+}
+
+function renderReorderList(){
+  const el=$("reorderList");
+  el.innerHTML=deck.map(function(c,i){
+    return '<div class="pile-row '+c.className+'"><span>'+escapeHtml(c.name)+'<br><span class="tag">'+escapeHtml(c.type)+'</span></span><span class="reorder-buttons"><button type="button" class="secondary" onclick="moveDeckCard('+i+',-1)">↑</button><button type="button" class="secondary" onclick="moveDeckCard('+i+',1)">↓</button></span></div>';
+  }).join("");
+}
+
+function moveDeckCard(index,direction){
+  const next=index+direction;
+  if(next<0||next>=deck.length)return;
+  const temp=deck[index];
+  deck[index]=deck[next];
+  deck[next]=temp;
+  renderReorderList();
+}
+
+function saveSettings(showMessage){
+  const settings={
+    playerCount:$("playerCount").value,
+    soloCards:$("soloCards").value,
+    specialNemesis:$("specialNemesis").checked,
+    assaultNemesis:$("assaultNemesis").checked
+  };
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings));}catch(e){}
+  if(showMessage)setCurrent("保存","設定保存済み","次回起動時に読み込みます","special");
+}
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw)return;
+    const settings=JSON.parse(raw);
+    if(settings.playerCount)$("playerCount").value=settings.playerCount;
+    if(settings.soloCards)$("soloCards").value=settings.soloCards;
+    if(typeof settings.specialNemesis==="boolean")$("specialNemesis").checked=settings.specialNemesis;
+    if(typeof settings.assaultNemesis==="boolean")$("assaultNemesis").checked=settings.assaultNemesis;
+  }catch(e){}
+}
+
+function onSettingChanged(){
+  updateSoloVisibility();
+  saveSettings(false);
+  updateView();
+}
+
+function initApp(){
+  loadSettings();
+  updateSoloVisibility();
+  updateView();
+}
+
+window.onload=initApp;
+</script></body>
+</html>
